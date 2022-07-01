@@ -3,10 +3,10 @@ use crate::{
     executor::Executor, fuzz_type::FuzzType, search::*, stats,
 };
 use rand::prelude::*;
-use std::sync::{
+use std::{sync::{
     atomic::{AtomicBool, Ordering},
     Arc, RwLock,
-};
+}, time::{Instant}};
 
 pub fn fuzz_loop(
     running: Arc<AtomicBool>,
@@ -23,7 +23,7 @@ pub fn fuzz_loop(
         global_stats.clone(),
     );
 
-    while running.load(Ordering::Relaxed) {
+    while running.load(Ordering::Relaxed) { // check if there is thread running now
         let entry = match depot.get_entry() {
             Some(e) => e,
             None => break,
@@ -37,6 +37,7 @@ pub fn fuzz_loop(
         }
 
         if cond.is_done() {
+            trace!("update done cond: {:?}", cond);
             depot.update_entry(cond);
             continue;
         }
@@ -63,20 +64,23 @@ pub fn fuzz_loop(
         */
 
         let buf = depot.get_input_buf(belong_input);
-
+        let start = Instant::now();
         {
             let fuzz_type = cond.get_fuzz_type();
             let handler = SearchHandler::new(running.clone(), &mut executor, &mut cond, buf);
+            debug!("fuzz type: {:?}", fuzz_type);
             match fuzz_type {
                 FuzzType::ExploreFuzz => {
                     if handler.cond.is_time_expired() {
                         handler.cond.next_state();
                     }
+                    debug!("state: {:?}", handler.cond.state);
                     if handler.cond.state.is_one_byte() {
                         OneByteFuzz::new(handler).run();
                     } else if handler.cond.state.is_det() {
                         DetFuzz::new(handler).run();
                     } else {
+                        debug!("search method: {:?}", search_method);
                         match search_method {
                             SearchMethod::Gd => {
                                 GdSearch::new(handler).run(&mut thread_rng());
@@ -116,7 +120,8 @@ pub fn fuzz_loop(
                 },
             }
         }
-
+        let duration = start.elapsed();
+        cond.add_duration(duration);
         depot.update_entry(cond);
     }
 }

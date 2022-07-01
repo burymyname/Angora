@@ -30,6 +30,7 @@ pub static ANGORA_DIR_NAME: &str = "angora";
 pub static ANGORA_LOG_FILE: &str = "angora.log";
 pub static COND_QUEUE_FILE: &str = "cond_queue.csv";
 pub static CHART_STAT_FILE: &str = "chart_stat.json";
+pub static COND_POINT_FILE: &str = "cond_point.csv";
 
 // tmpfs.rs
 pub static PERSIST_TRACK_FILES: &str = "ANGORA_DISABLE_TMPFS";

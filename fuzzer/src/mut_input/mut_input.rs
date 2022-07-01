@@ -2,20 +2,21 @@ use super::*;
 use crate::search;
 use angora_common::config;
 
+use serde_derive::{Deserialize, Serialize};
 use rand::{self, distributions::Uniform, Rng};
 
 use std::{fmt, u8};
 //use std::u16;
 use std::{cmp, u32, u64};
 
-#[derive(Clone, Debug, Constructor)]
+#[derive(Clone, Debug, Constructor, Deserialize, Serialize)]
 struct InputMeta {
     sign: bool,
     offset: usize,
     size: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct MutInput {
     value: Vec<u8>,
     meta: Vec<InputMeta>,

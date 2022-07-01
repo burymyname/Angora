@@ -94,6 +94,7 @@ pub fn load_track_data(
         if cond.offsets.len() == 1 && cond.offsets[0].end - cond.offsets[0].begin == 1 {
             cond.state = CondState::OneByte;
         }
+        cond.var_num = cond.offsets.len();
     }
 
     filter::filter_cond_list(&mut cond_list);

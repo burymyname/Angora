@@ -1,3 +1,5 @@
+// use crate::fit::model::Model;
+
 use super::*;
 
 pub struct OneByteFuzz<'a> {
@@ -38,11 +40,17 @@ impl<'a> OneByteFuzz<'a> {
         }
         self.execute_direct();
         for i in 0..256 {
-            if self.handler.cond.is_done() {
-                break;
-            }
+            // if self.handler.cond.is_done() {
+            //     break;
+            // }
             input.set(0, i);
             self.execute(&input);
         }
+
+        // if self.handler.cond.is_done() {
+        //     // TODO: fit the model
+        //     let mut model = Model::new(&self.handler.cond);
+            
+        // }
     }
 }

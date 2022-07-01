@@ -10,9 +10,12 @@ impl Drop for Depot {
         let mut log_q = fs::File::create(dir.join(defs::COND_QUEUE_FILE)).unwrap();
         writeln!(
             log_q,
-            "cmpid, context, order, belong, p, op, condition, is_desirable, offsets, state"
+            "cmpid, context, order, belong, p, op, condition, arg1, arg2, is_desirable, offsets, state, fuzz_times, fuzz_duration, var_num, points"
         )
         .unwrap();
+
+        let mut log_p = fs::File::create(dir.join(defs::COND_POINT_FILE)).unwrap();
+
         let q = self.queue.lock().unwrap();
 
         for (cond, p) in q.iter() {
@@ -24,7 +27,7 @@ impl Drop for Depot {
 
                 writeln!(
                     log_q,
-                    "{}, {}, {}, {}, {}, {}, {}, {:x}, {:x}, {}, {}, {:?}",
+                    "{}, {}, {}, {}, {}, {}, {}, {:x}, {:x}, {}, {}, {:?}, {}, {:?}, {}",
                     cond.base.cmpid,
                     cond.base.context,
                     cond.base.order,
@@ -36,10 +39,24 @@ impl Drop for Depot {
                     cond.base.arg2,
                     cond.is_desirable,
                     offsets.join("&"),
-                    cond.state
+                    cond.state,
+                    cond.fuzz_times,
+                    cond.fuzz_duration,
+                    cond.var_num,
                 )
                 .unwrap();
+
+                writeln!(
+                    log_p,
+                    "{}, {}, {:?}",
+                    cond.base.cmpid,
+                    cond.var_num,
+                    cond.points,
+                ).unwrap();
             }
         }
+
+        
+
     }
 }

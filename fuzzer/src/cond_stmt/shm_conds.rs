@@ -1,5 +1,8 @@
 use super::CondOutput;
 use crate::cond_stmt;
+use crate::mut_input::MutInput;
+use crate::fit::point::Point;
+use crate::cond_stmt::output::translate_signed_value;
 use angora_common::{cond_stmt_base::CondStmtBase, defs, shm};
 use std;
 
@@ -68,5 +71,15 @@ impl ShmConds {
             output -= 1;
         }
         output
+    }
+
+    pub fn get_cond_point(&self, input: &MutInput) -> Point {
+        let mut a = self.cond.arg1;
+        if self.cond.is_signed() {
+            a = translate_signed_value(a, self.cond.size);
+        }
+        debug!("point: input={:?}, output={}", input, a);
+        let point = Point::new(input, a);
+        point
     }
 }

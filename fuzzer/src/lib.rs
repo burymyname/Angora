@@ -13,6 +13,7 @@ mod mut_input;
 mod search;
 mod stats;
 pub mod track;
+mod fit;
 
 mod fuzz_loop;
 mod fuzz_main;

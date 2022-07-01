@@ -4,6 +4,7 @@ use crate::{
     branches, command,
     cond_stmt::{self, NextState},
     depot, stats, track,
+    mut_input::MutInput,
 };
 use angora_common::{config, defs};
 
@@ -173,11 +174,15 @@ impl Executor {
         &mut self,
         buf: &Vec<u8>,
         cond: &mut cond_stmt::CondStmt,
+        input: &MutInput,
     ) -> (StatusType, u64) {
         self.run_init();
         self.t_conds.set(cond);
         let mut status = self.run_inner(buf);
 
+        let point = self.t_conds.get_cond_point(input);
+        cond.points.push(point);
+        
         let output = self.t_conds.get_cond_output();
         let mut explored = false;
         let mut skip = false;

@@ -105,8 +105,8 @@ impl CondOutput for CondStmtBase {
         };
 
         debug!(
-            "id: {}, op: {} -> {}, size:{}, condition: {}, arg(0x{:x} 0x{:x}), output: {}",
-            self.cmpid, self.op, op, self.size, self.condition, a, b, output
+            "id: {}, op: {} -> {}, size:{}, condition: {}, arg(0x{:x}={} 0x{:x}={}), output: {}",
+            self.cmpid, self.op, op, self.size, self.condition, a, a, b, b, output
         );
 
         output
@@ -121,7 +121,7 @@ fn sub_abs(arg1: u64, arg2: u64) -> u64 {
     }
 }
 
-fn translate_signed_value(v: u64, size: u32) -> u64 {
+pub fn translate_signed_value(v: u64, size: u32) -> u64 {
     match size {
         1 => {
             let mut s = v as i8;

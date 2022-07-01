@@ -1,8 +1,9 @@
 use super::CondState;
 use crate::fuzz_type::FuzzType;
+use crate::fit::point::Point;
 use angora_common::{cond_stmt_base::CondStmtBase, defs, tag::TagSeg};
 use serde_derive::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
+use std::{hash::{Hash, Hasher}, time::Duration};
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct CondStmt {
@@ -10,14 +11,17 @@ pub struct CondStmt {
     pub offsets: Vec<TagSeg>,
     pub offsets_opt: Vec<TagSeg>,
     pub variables: Vec<u8>,
+    pub var_num: usize,
 
     pub speed: u32,
     pub is_desirable: bool, // non-convex
-    pub is_consistent: bool,
+    pub is_consistent: bool, // track and fast program cmpid should be consistent
     pub fuzz_times: usize,
     pub state: CondState,
     pub num_minimal_optima: usize,
     pub linear: bool,
+    pub fuzz_duration: Duration,
+    pub points: Vec<Point>,
 }
 
 impl PartialEq for CondStmt {
@@ -44,6 +48,7 @@ impl CondStmt {
             offsets: vec![],
             offsets_opt: vec![],
             variables: vec![],
+            var_num: 0,
             speed: 0,
             is_consistent: true,
             is_desirable: true,
@@ -51,6 +56,8 @@ impl CondStmt {
             state: CondState::default(),
             num_minimal_optima: 0,
             linear: false,
+            fuzz_duration: Duration::ZERO,
+            points: vec![],
         }
     }
 
@@ -87,7 +94,7 @@ impl CondStmt {
 
     pub fn mark_as_done(&mut self) {
         self.base.condition = defs::COND_DONE_ST;
-        self.clear();
+        // self.clear();
     }
 
     pub fn clear(&mut self) {
@@ -117,5 +124,9 @@ impl CondStmt {
 
     pub fn is_done(&self) -> bool {
         self.base.is_done()
+    }
+
+    pub fn add_duration(&mut self, time: Duration) {
+        self.fuzz_duration += time;
     }
 }

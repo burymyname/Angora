@@ -80,7 +80,7 @@ impl<'a> GdSearch<'a> {
             self.cal_gradient(&input, f0, &mut grad);
 
             let mut g_i = 0;
-            while grad.max_val() == 0 {
+            while grad.max_val() == 0 { // the gradient is 0
                 if self.handler.is_stopped_or_skip() || g_i > config::MAX_NUM_MINIMAL_OPTIMA_ROUND {
                     break;
                 }

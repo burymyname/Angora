@@ -109,6 +109,7 @@ pub fn fuzz_main(
     );
 
     for handle in handles {
+        debug!("handle join in for loop");
         if handle.join().is_err() {
             error!("Error happened in fuzzing thread!");
         }

@@ -107,11 +107,13 @@ impl NextState for CondStmt {
     fn to_offsets_opt(&mut self) {
         self.state = CondState::OffsetOpt;
         std::mem::swap(&mut self.offsets, &mut self.offsets_opt);
+        self.var_num = self.offsets.len();
     }
 
     fn to_offsets_all(&mut self) {
         self.state = CondState::OffsetAll;
         self.offsets = merge_offsets(&self.offsets, &self.offsets_opt);
+        self.var_num = self.offsets.len();
     }
 
     fn to_det(&mut self) {
