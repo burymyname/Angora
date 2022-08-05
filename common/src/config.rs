@@ -43,3 +43,7 @@ pub const MUTATE_ARITH_MAX: u32 = 30;
 pub const RANDOM_LEN_NUM: usize = 30;
 pub const MAX_HAVOC_FLIP_TIMES: usize = 45; // for all bytes
 pub const MAX_SPLICE_TIMES: usize = 45;
+
+// FIT
+pub const MAX_ENUM_FIT_POINTS_NUM: u64 = 256;
+pub const MAX_FIT_FUNC_VAR_NUM: usize = 4;

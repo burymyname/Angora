@@ -22,6 +22,8 @@
 #include "./ffds.h"
 #include "./len_label.h"
 
+#define DEBUG_INFO
+
 static int granularity = 1; // byte level
 
 extern void __angora_track_fini_rs();
@@ -106,6 +108,9 @@ FILE *__dfsw_fopen(const char *filename, const char *mode, dfsan_label fn_label,
 #endif
 
   if (fd && IS_FUZZING_FILE(filename)) {
+// #ifdef DEBUG_INFO
+//   fprintf(stderr, "### is fuzzing file\n");
+// #endif
     add_fuzzing_ffd(fd);
   }
 

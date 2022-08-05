@@ -180,8 +180,11 @@ impl Executor {
         self.t_conds.set(cond);
         let mut status = self.run_inner(buf);
 
-        let point = self.t_conds.get_cond_point(input);
-        cond.points.push(point);
+        let offset_to_arg = cond.offsets_to_arg;
+        let point = self.t_conds.get_cond_point(input, offset_to_arg);
+        if let Some(p) = point {
+            cond.insert_point(&p);
+        }
         
         let output = self.t_conds.get_cond_output();
         let mut explored = false;
@@ -312,8 +315,10 @@ impl Executor {
 
         compiler_fence(Ordering::SeqCst);
         let ret_status = if let Some(ref mut fs) = self.forksrv {
+            trace!("run forksrv");
             fs.run()
         } else {
+            trace!("run target");
             self.run_target(&self.cmd.main, self.cmd.mem_limit, self.cmd.time_limit)
         };
         compiler_fence(Ordering::SeqCst);

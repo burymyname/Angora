@@ -32,6 +32,8 @@ pub use self::cbh::CbhSearch;
 pub mod mb;
 pub use self::mb::MbSearch;
 
+pub mod enums;
+
 //Other cases of special offsets
 pub mod cmpfn;
 pub use self::cmpfn::FnFuzz;

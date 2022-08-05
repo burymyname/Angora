@@ -49,10 +49,13 @@ fn get_offsets_and_variables(
     let empty_offsets: Vec<TagSeg> = vec![];
     let offsets1 = m.get(&cond.base.lb1).unwrap_or(&empty_offsets);
     let offsets2 = m.get(&cond.base.lb2).unwrap_or(&empty_offsets);
+    // assign the offset1 to offsets[]
     if offsets2.len() == 0 || (offsets1.len() > 0 && offsets1.len() <= offsets2.len()) {
         cond.offsets = offsets1.clone();
+        cond.offsets_to_arg = 1;
         if cond.base.lb2 > 0 && cond.base.lb1 != cond.base.lb2 {
             cond.offsets_opt = offsets2.clone();
+            cond.offsets_opt_to_arg = 2;
         }
         cond.variables = if let Some(args) = magic_bytes {
             [&args.1[..], &args.0[..]].concat()
@@ -60,10 +63,12 @@ fn get_offsets_and_variables(
             // if it is integer comparison, we use the bytes of constant as magic bytes.
             mut_input::write_as_ule(cond.base.arg2, cond.base.size as usize)
         };
-    } else {
+    } else { // offset2 to offsets[]
         cond.offsets = offsets2.clone();
+        cond.offsets_to_arg = 2;
         if cond.base.lb1 > 0 && cond.base.lb1 != cond.base.lb2 {
             cond.offsets_opt = offsets1.clone();
+            cond.offsets_opt_to_arg = 1;
         }
         cond.variables = if let Some(args) = magic_bytes {
             [&args.0[..], &args.1[..]].concat()
@@ -95,6 +100,7 @@ pub fn load_track_data(
             cond.state = CondState::OneByte;
         }
         cond.var_num = cond.offsets.len();
+        cond.var_num_opt = cond.offsets_opt.len();
     }
 
     filter::filter_cond_list(&mut cond_list);

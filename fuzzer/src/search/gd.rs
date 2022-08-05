@@ -7,7 +7,7 @@ use std;
 
 pub struct GdSearch<'a> {
     handler: SearchHandler<'a>,
-    sample_index: (usize, usize),
+    sample_index: (usize, usize), // 
 }
 
 impl<'a> GdSearch<'a> {
@@ -50,6 +50,7 @@ impl<'a> GdSearch<'a> {
     }
 
     pub fn run<T: Rng>(&mut self, rng: &mut T) {
+        self.handler.search = SearchMethod::Gd;
         let mut input = self.handler.get_f_input();
         assert!(
             input.len() > 0,

@@ -20,6 +20,7 @@ pub static MSAN_OPTIONS_CONTENT: &str =
 pub static CRASHES_DIR: &str = "crashes";
 pub static HANGS_DIR: &str = "hangs";
 pub static INPUTS_DIR: &str = "queue";
+pub static POINTS_DIR: &str = "points";
 
 // forksrv.rs
 pub static ENABLE_FORKSRV: &str = "ANGORA_ENABLE_FORKSRV";
@@ -30,6 +31,8 @@ pub static ANGORA_DIR_NAME: &str = "angora";
 pub static ANGORA_LOG_FILE: &str = "angora.log";
 pub static COND_QUEUE_FILE: &str = "cond_queue.csv";
 pub static CHART_STAT_FILE: &str = "chart_stat.json";
+
+// fit
 pub static COND_POINT_FILE: &str = "cond_point.csv";
 
 // tmpfs.rs

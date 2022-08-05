@@ -172,6 +172,27 @@ pub fn translate_signed_value(v: u64, size: u32) -> u64 {
         _ => v,
     }
 }
+
+pub fn translate_unsign_to_sign(v: u64, size: u32) -> i64 {
+    match size {
+        1 => {
+            let s = v as i8;
+            s as i64
+        },
+        
+        2 => {
+            let s = v as i16;
+            s as i64
+        },
+
+        4 => {
+            let s = v as i32;
+            s as i64
+        },
+
+        _ => v as i64,
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

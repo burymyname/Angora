@@ -1,8 +1,7 @@
 use super::CondOutput;
-use crate::cond_stmt;
+use crate::cond_stmt::{self, output::translate_unsign_to_sign};
 use crate::mut_input::MutInput;
 use crate::fit::point::Point;
-use crate::cond_stmt::output::translate_signed_value;
 use angora_common::{cond_stmt_base::CondStmtBase, defs, shm};
 use std;
 
@@ -73,13 +72,27 @@ impl ShmConds {
         output
     }
 
-    pub fn get_cond_point(&self, input: &MutInput) -> Point {
-        let mut a = self.cond.arg1;
-        if self.cond.is_signed() {
-            a = translate_signed_value(a, self.cond.size);
+    pub fn get_cond_point(&self, input: &MutInput, to_arg: u8) -> Option<Point> {
+        debug!("input={:?}", input);
+        if !self.is_cond_reachable() || self.cond.is_ptr() {
+            return None;
         }
-        debug!("point: input={:?}, output={}", input, a);
-        let point = Point::new(input, a);
-        point
+
+        let a = self.cond.arg1;
+        let b = self.cond.arg2;
+
+        let val = match to_arg {
+            1 => a,
+            2 => b,
+            _ => {return None;},
+        };
+        
+        let mut i = 0_i64;
+        if self.cond.is_signed() {
+            i = translate_unsign_to_sign(val, self.cond.size);
+        }
+        debug!("point: input={:?}, output={}/{}", input, val, i);
+        let point = Point::from(input, val);
+        Some(point)
     }
 }

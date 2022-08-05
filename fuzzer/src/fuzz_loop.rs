@@ -1,6 +1,6 @@
 use crate::{
     branches::GlobalBranches, command::CommandOpt, cond_stmt::NextState, depot::Depot,
-    executor::Executor, fuzz_type::FuzzType, search::*, stats,
+    executor::Executor, fuzz_type::FuzzType, search::{*, enums::EnumSearch}, stats,
 };
 use rand::prelude::*;
 use std::{sync::{
@@ -23,6 +23,8 @@ pub fn fuzz_loop(
         global_stats.clone(),
     );
 
+    let dir = &depot.dirs.points_dir;
+
     while running.load(Ordering::Relaxed) { // check if there is thread running now
         let entry = match depot.get_entry() {
             Some(e) => e,
@@ -43,6 +45,15 @@ pub fn fuzz_loop(
         }
 
         trace!("{:?}", cond);
+
+        // let id = cond.base.cmpid;
+        // let order = cond.base.order;
+        // if id != 4284531340 {
+        //     cond.mark_as_done();
+        //     depot.update_entry(cond);
+        //     continue;
+        // }
+
 
         let belong_input = cond.base.belong as usize;
 
@@ -80,20 +91,25 @@ pub fn fuzz_loop(
                     } else if handler.cond.state.is_det() {
                         DetFuzz::new(handler).run();
                     } else {
-                        debug!("search method: {:?}", search_method);
-                        match search_method {
-                            SearchMethod::Gd => {
-                                GdSearch::new(handler).run(&mut thread_rng());
-                            },
-                            SearchMethod::Random => {
-                                RandomSearch::new(handler).run();
-                            },
-                            SearchMethod::Cbh => {
-                                CbhSearch::new(handler).run();
-                            },
-                            SearchMethod::Mb => {
-                                MbSearch::new(handler).run();
-                            },
+                        // if handler.cond.is_first_time() {
+                        //     debug!("fit search!");
+                        //     EnumSearch::new(handler).run();
+                        // } else {
+                            match search_method {
+                                SearchMethod::Gd => {
+                                    GdSearch::new(handler).run(&mut thread_rng());
+                                },
+                                SearchMethod::Random => {
+                                    RandomSearch::new(handler).run();
+                                },
+                                SearchMethod::Cbh => {
+                                    CbhSearch::new(handler).run();
+                                },
+                                SearchMethod::Mb => {
+                                    MbSearch::new(handler).run();
+                                },
+                                _ => {},
+                            // }    
                         }
                     }
                 },
@@ -120,8 +136,16 @@ pub fn fuzz_loop(
                 },
             }
         }
+
+        // recording fuzzing time
         let duration = start.elapsed();
         cond.add_duration(duration);
+
+        if cond.has_points() {
+            cond.dump_points(&dir);
+        }
+
         depot.update_entry(cond);
+
     }
 }

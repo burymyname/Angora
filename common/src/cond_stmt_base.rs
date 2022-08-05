@@ -19,6 +19,8 @@ pub struct CondStmtBase {
 
     pub arg1: u64,
     pub arg2: u64,
+
+    pub is_ptr: bool,
 }
 
 /*
@@ -78,5 +80,9 @@ impl CondStmtBase {
 
     pub fn is_done(&self) -> bool {
         self.condition == COND_DONE_ST
+    }
+
+    pub fn is_ptr(&self) -> bool {
+        self.is_ptr
     }
 }

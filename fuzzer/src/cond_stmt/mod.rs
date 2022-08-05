@@ -1,6 +1,6 @@
 mod cond_state;
 pub mod cond_stmt;
-mod output;
+pub mod output;
 mod shm_conds;
 
 pub use self::{

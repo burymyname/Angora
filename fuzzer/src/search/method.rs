@@ -4,6 +4,7 @@ pub enum SearchMethod {
     Random,
     Cbh,
     Mb,
+    Em,
 }
 
 pub fn parse_search_method(m: &str) -> SearchMethod {
@@ -12,6 +13,7 @@ pub fn parse_search_method(m: &str) -> SearchMethod {
         "random" => SearchMethod::Random,
         "cbh" => SearchMethod::Cbh,
         "mb" => SearchMethod::Mb,
+        // "em" => SearchMethod::EM,
         _ => SearchMethod::Gd,
     }
 }

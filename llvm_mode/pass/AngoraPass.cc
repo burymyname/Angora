@@ -103,6 +103,7 @@ public:
   FunctionCallee TraceSwTT;
   FunctionCallee TraceFnTT;
   FunctionCallee TraceExploitTT;
+  FunctionCallee TraceLoadTT;
 
   // Custom setting
   AngoraABIList ABIList;
@@ -137,6 +138,8 @@ public:
   void visitExploitation(Instruction *Inst);
   void processCall(Instruction *Inst);
   void addFnWrap(Function &F);
+  void visitLoadInst(Instruction *Inst);
+  void getInstDebugLoc(Instruction *Inst, std::string &fname, uint &line, uint &col);
 };
 
 } // namespace
@@ -200,6 +203,18 @@ u32 AngoraLLVMPass::getInstructionId(Instruction *Inst) {
   }
 
   return h;
+}
+
+void AngoraLLVMPass::getInstDebugLoc(
+  Instruction *Inst, std::string &fname, uint &line, uint &col) {
+  if (DILocation *Loc = Inst->getDebugLoc()) {
+    fname = Loc->getFilename().str();
+    line = Loc->getLine();
+    col = Loc->getColumn();
+  } else {
+   fname = "NoFile" + std::to_string(getRandomInstructionId());
+   line = col = 0;
+  }
 }
 
 void AngoraLLVMPass::setValueNonSan(Value *v) {
@@ -282,7 +297,7 @@ void AngoraLLVMPass::initVariables(Module &M) {
   } else if (TrackMode) {
     GET_OR_INSERT_FUNCTION(
         TraceCmpTT, VoidTy, "__angora_trace_cmp_tt",
-        {Int32Ty, Int32Ty, Int32Ty, Int32Ty, Int64Ty, Int64Ty, Int32Ty})
+        {Int32Ty, Int32Ty, Int32Ty, Int32Ty, Int64Ty, Int64Ty, Int32Ty, Int8Ty})
     GET_OR_INSERT_FUNCTION(
         TraceSwTT, VoidTy, "__angora_trace_switch_tt",
         {Int32Ty, Int32Ty, Int32Ty, Int64Ty, Int32Ty, Int64PtrTy})
@@ -290,7 +305,9 @@ void AngoraLLVMPass::initVariables(Module &M) {
                            {Int32Ty, Int32Ty, Int32Ty, Int8PtrTy, Int8PtrTy})
     GET_OR_INSERT_FUNCTION(TraceExploitTT, VoidTy,
                            "__angora_trace_exploit_val_tt",
-                           {Int32Ty, Int32Ty, Int32Ty, Int32Ty, Int64Ty})
+                           {Int32Ty, Int32Ty, Int32Ty, Int32Ty, Int64Ty, Int8Ty})
+    GET_OR_INSERT_FUNCTION(TraceLoadTT, VoidTy, "__angora_load_tt", 
+                           {Int8PtrTy, Int32Ty, Int8PtrTy, Int32Ty, Int32Ty});
   }
 
   std::vector<std::string> AllABIListFiles;
@@ -621,7 +638,9 @@ void AngoraLLVMPass::processCmp(Instruction *Cond, Constant *Cid,
     CallInst *ProxyCall =
         ThenB.CreateCall(TraceCmp, {CondExt, Cid, CurCtx, OpArg[0], OpArg[1]});
     setInsNonSan(ProxyCall);
+
   } else if (TrackMode) {
+    
     Value *SizeArg = ConstantInt::get(Int32Ty, num_bytes);
     u32 predicate = Cmp->getPredicate();
     if (ConstantInt *CInt = dyn_cast<ConstantInt>(OpArg[1])) {
@@ -634,11 +653,14 @@ void AngoraLLVMPass::processCmp(Instruction *Cond, Constant *Cid,
     setValueNonSan(CondExt);
     OpArg[0] = castArgType(IRB, OpArg[0]);
     OpArg[1] = castArgType(IRB, OpArg[1]);
+    u8 is_pointer = 0;
+    if (OpType->isPointerTy()) is_pointer = 1;
+    Constant *IsPtr = ConstantInt::get(Int8Ty, is_pointer);
     LoadInst *CurCtx = IRB.CreateLoad(AngoraContext);
     setInsNonSan(CurCtx);
     CallInst *ProxyCall =
         IRB.CreateCall(TraceCmpTT, {Cid, CurCtx, SizeArg, TypeArg, OpArg[0],
-                                    OpArg[1], CondExt});
+                                    OpArg[1], CondExt, IsPtr});
     setInsNonSan(ProxyCall);
   }
 }
@@ -651,7 +673,9 @@ void AngoraLLVMPass::processBoolCmp(Value *Cond, Constant *Cid,
   Value *OpArg[2];
   OpArg[1] = ConstantInt::get(Int64Ty, 1);
   IRBuilder<> IRB(InsertPoint);
+
   if (FastMode) {
+    
     LoadInst *CurCid = IRB.CreateLoad(AngoraCondId);
     setInsNonSan(CurCid);
     Value *CmpEq = IRB.CreateICmpEQ(Cid, CurCid);
@@ -669,7 +693,9 @@ void AngoraLLVMPass::processBoolCmp(Value *Cond, Constant *Cid,
     CallInst *ProxyCall =
         ThenB.CreateCall(TraceCmp, {CondExt, Cid, CurCtx, OpArg[0], OpArg[1]});
     setInsNonSan(ProxyCall);
+
   } else if (TrackMode) {
+    
     Value *SizeArg = ConstantInt::get(Int32Ty, 1);
     Value *TypeArg = ConstantInt::get(Int32Ty, COND_EQ_OP | COND_BOOL_MASK);
     Value *CondExt = IRB.CreateZExt(Cond, Int32Ty);
@@ -680,7 +706,7 @@ void AngoraLLVMPass::processBoolCmp(Value *Cond, Constant *Cid,
     setInsNonSan(CurCtx);
     CallInst *ProxyCall =
         IRB.CreateCall(TraceCmpTT, {Cid, CurCtx, SizeArg, TypeArg, OpArg[0],
-                                    OpArg[1], CondExt});
+                                    OpArg[1], CondExt, ConstantInt::get(Int8Ty, 0)});
     setInsNonSan(ProxyCall);
   }
 }
@@ -739,7 +765,9 @@ void AngoraLLVMPass::visitSwitchInst(Module &M, Instruction *Inst) {
     setInsNonSan(CurCtx);
     CallInst *ProxyCall = ThenB.CreateCall(TraceSw, {Cid, CurCtx, CondExt});
     setInsNonSan(ProxyCall);
+
   } else if (TrackMode) {
+    
     Value *SizeArg = ConstantInt::get(Int32Ty, num_bytes);
     SmallVector<Constant *, 16> ArgList;
     for (auto It : Sw->cases()) {
@@ -794,8 +822,10 @@ void AngoraLLVMPass::visitExploitation(Instruction *Inst) {
         if (!isa<ConstantInt>(ParamVal)) {
           ConstantInt *Cid = ConstantInt::get(Int32Ty, getInstructionId(Inst));
           int size = ParamVal->getType()->getScalarSizeInBits() / 8;
+          u8 is_pointer = 0;
           if (ParamType->isPointerTy()) {
             size = 8;
+            is_pointer = 1;
             // Hardware-wise, a pointer is an int64, no big deal.
             // This explict cast is to make llvm backend happy.
             ParamVal = IRB.CreatePtrToInt(ParamVal, Int64Ty);
@@ -807,13 +837,51 @@ void AngoraLLVMPass::visitExploitation(Instruction *Inst) {
           if (TrackMode) {
             LoadInst *CurCtx = IRB.CreateLoad(AngoraContext);
             setInsNonSan(CurCtx);
+            Constant *IsPtr = ConstantInt::get(Int8Ty, is_pointer);
             CallInst *ProxyCall = IRB.CreateCall(
-                TraceExploitTT, {Cid, CurCtx, SizeArg, TypeArg, ParamVal});
+                TraceExploitTT, {Cid, CurCtx, SizeArg, TypeArg, ParamVal, IsPtr});
             setInsNonSan(ProxyCall);
           }
         }
       }
     }
+  }
+}
+
+void AngoraLLVMPass::visitLoadInst(Instruction *Inst) {
+  if (!TrackMode) return;
+
+  // errs() << *Inst << "\n";
+
+  // get load ptr addr and size
+  LoadInst *loadInst = dyn_cast<LoadInst>(Inst);
+  Value *loadOp = loadInst->getPointerOperand();
+  Type *varType = loadInst->getPointerOperandType()->getPointerElementType();
+  unsigned tySize = 0;
+  if (varType->isIntegerTy()) {
+    tySize = varType->getIntegerBitWidth() / 8;
+  }
+  Constant *size = ConstantInt::get(Int32Ty, tySize);
+
+  if (tySize != 0) {
+    // get load inst location, including file name, line, column.
+    std::string fname;
+    uint line, col;
+    getInstDebugLoc(Inst, fname, line, col);
+    auto *FNameStr = ConstantDataArray::getString(Inst->getContext(), fname);
+    Constant *FName = (Inst->getModule())->getOrInsertGlobal(fname, FNameStr->getType());
+    GlobalVariable *FNameVar = dyn_cast<GlobalVariable>(FName);
+    FNameVar->setLinkage(GlobalVariable::PrivateLinkage);
+    if (!FNameVar->hasInitializer()) {
+      FNameVar->setInitializer(FNameStr);
+    }
+
+    IRBuilder<> IRB(Inst->getNextNonDebugInstruction());
+    Value *loadOpPtr = IRB.CreatePointerCast(loadOp, Int8PtrTy, "loadOpPtr");
+    Value *FNamePtr = IRB.CreatePointerCast(FName, Int8PtrTy);
+    Constant *Line = ConstantInt::get(Int32Ty, line);
+    Constant *Col = ConstantInt::get(Int32Ty, col);
+    CallInst *traceLoad = IRB.CreateCall(TraceLoadTT, {loadOpPtr, size, FNamePtr, Line, Col});
   }
 }
 
@@ -870,7 +938,9 @@ bool AngoraLLVMPass::runOnModule(Module &M) {
           visitSwitchInst(M, Inst);
         } else if (isa<CmpInst>(Inst)) {
           visitCmpInst(Inst);
-        } else {
+        }/* else if (isa<LoadInst>(Inst)) {
+          visitLoadInst(Inst);
+        }*/ else {
           visitExploitation(Inst);
         }
       }

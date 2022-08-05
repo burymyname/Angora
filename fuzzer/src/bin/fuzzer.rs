@@ -73,7 +73,7 @@ fn main() {
              .long("search_method")
              .value_name("SearchMethod")
              .help("Which search method to run the program in?")
-             .possible_values(&["gd", "random", "mb"]))
+             .possible_values(&["gd", "random", "mb", "em"]))
         .arg(Arg::with_name("sync_afl")
              .short("S")
              .long("sync_afl")
@@ -98,7 +98,7 @@ fn main() {
         value_t!(matches, "thread_jobs", usize).unwrap_or(1),
         value_t!(matches, "memory_limit", u64).unwrap_or(angora_common::config::MEM_LIMIT),
         value_t!(matches, "time_limit", u64).unwrap_or(angora_common::config::TIME_LIMIT),
-        matches.value_of("search_method").unwrap_or("gd"),
+        matches.value_of("search_method").unwrap_or("gd"), // NOTE: default search method
         matches.occurrences_of("sync_afl") > 0,
         matches.occurrences_of("disable_afl_mutation") == 0,
         matches.occurrences_of("disable_exploitation") == 0,

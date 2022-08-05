@@ -8,6 +8,7 @@ pub struct SearchHandler<'a> {
     pub buf: Vec<u8>,
     pub max_times: Counter,
     pub skip: bool,
+    pub search: SearchMethod,
 }
 
 impl<'a> SearchHandler<'a> {
@@ -26,12 +27,17 @@ impl<'a> SearchHandler<'a> {
             buf,
             max_times: config::MAX_SEARCH_EXEC_NUM.into(),
             skip: false,
+            search: SearchMethod::Gd,
         }
     }
 
     pub fn is_stopped_or_skip(&self) -> bool {
         !self.running.load(Ordering::Relaxed) || self.skip
     }
+
+    // pub fn is_stop(&self) -> bool {
+    //     !self.running.load(Ordering::Relaxed)
+    // }
 
     fn process_status(&mut self, status: StatusType) {
         match status {
@@ -49,7 +55,7 @@ impl<'a> SearchHandler<'a> {
         // Skip if it reach max epoch,
         // Like a Round-Robin algorithm,
         // To avoid stuck in some cond too much time.
-        if self.executor.local_stats.num_exec > self.max_times {
+        if self.executor.local_stats.num_exec > self.max_times && self.search != SearchMethod::Em {
             self.skip = true;
         }
     }

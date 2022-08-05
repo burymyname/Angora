@@ -47,10 +47,5 @@ impl<'a> OneByteFuzz<'a> {
             self.execute(&input);
         }
 
-        // if self.handler.cond.is_done() {
-        //     // TODO: fit the model
-        //     let mut model = Model::new(&self.handler.cond);
-            
-        // }
     }
 }

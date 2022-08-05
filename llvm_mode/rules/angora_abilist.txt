@@ -33,6 +33,9 @@ fun:__angora_leave_fn=uninstrumented
 fun:__angora_leave_fn=discard
 fun:__unfold_branch_fn=uninstrumented
 fun:__unfold_branch_fn=discard
+fun:__angora_load_tt=uninstrumented
+fun:__angora_load_tt=custom
+
 
 ### Memory related
 # alloc

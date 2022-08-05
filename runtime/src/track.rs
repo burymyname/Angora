@@ -1,9 +1,9 @@
 use super::*;
-use crate::tag_set_wrap;
+use crate::tag_set_wrap::{self, tag_set_find};
 use angora_common::{cond_stmt_base::*, defs};
 use lazy_static::lazy_static;
 use libc;
-use std::{slice, sync::Mutex};
+use std::{slice, sync::Mutex, ffi::CStr};
 
 // use shm_conds;
 lazy_static! {
@@ -48,6 +48,7 @@ pub extern "C" fn __dfsw___angora_trace_cmp_tt(
     arg1: u64,
     arg2: u64,
     condition: u32,
+    is_ptr: u8,
     _l0: DfsanLabel,
     _l1: DfsanLabel,
     _l2: DfsanLabel,
@@ -55,20 +56,24 @@ pub extern "C" fn __dfsw___angora_trace_cmp_tt(
     l4: DfsanLabel,
     l5: DfsanLabel,
     _l6: DfsanLabel,
+    _l7: DfsanLabel,
 ) {
-    //println!("[CMP] id: {}, ctx: {}", cmpid, get_context());
     // ret_label: *mut DfsanLabel
     let lb1 = l4;
     let lb2 = l5;
+
     if lb1 == 0 && lb2 == 0 {
         return;
     }
+
+    eprintln!("[CMP] id: {}, ctx: {}, arg1: {}, arg2: {}, lb1: {}, lb2: {}", 
+        cmpid, context, arg1, arg2, lb1, lb2);
 
     let op = infer_eq_sign(op, lb1, lb2);
     infer_shape(lb1, size);
     infer_shape(lb2, size);
 
-    log_cmp(cmpid, context, condition, op, size, lb1, lb2, arg1, arg2);
+    log_cmp(cmpid, context, condition, op, size, lb1, lb2, arg1, arg2, is_ptr);
 }
 
 #[no_mangle]
@@ -95,13 +100,16 @@ pub extern "C" fn __dfsw___angora_trace_switch_tt(
     _l1: DfsanLabel,
     _l2: DfsanLabel,
     l3: DfsanLabel,
-    _l3: DfsanLabel,
     _l4: DfsanLabel,
+    _l5: DfsanLabel,
 ) {
     let lb = l3;
     if lb == 0 {
         return;
     }
+
+    eprintln!("[switch] id: {}, context: {}, lb: {}, arg: {}", 
+        cmpid, context, lb, condition);
 
     infer_shape(lb, size);
 
@@ -123,6 +131,7 @@ pub extern "C" fn __dfsw___angora_trace_switch_tt(
         lb2: 0,
         arg1: condition,
         arg2: 0,
+        is_ptr: false,
     };
 
     let sw_args = unsafe { slice::from_raw_parts(args, num as usize) };
@@ -175,6 +184,9 @@ pub extern "C" fn __dfsw___angora_trace_fn_tt(
     let arg1 = unsafe { slice::from_raw_parts(parg1 as *mut u8, arglen1) }.to_vec();
     let arg2 = unsafe { slice::from_raw_parts(parg2 as *mut u8, arglen2) }.to_vec();
 
+    eprintln!("[trace fn] id: {}, context: {}, arg1: {:?}, arg2: {:?}, lb1: {}, lb2: {}", 
+        cmpid, context, arg1, arg2, lb1, lb2);
+
     let mut cond = CondStmtBase {
         cmpid,
         context,
@@ -188,6 +200,7 @@ pub extern "C" fn __dfsw___angora_trace_fn_tt(
         lb2: 0,
         arg1: 0,
         arg2: 0,
+        is_ptr: false,
     };
 
     if lb1 > 0 {
@@ -216,18 +229,20 @@ pub extern "C" fn __dfsw___angora_trace_exploit_val_tt(
     size: u32,
     op: u32,
     val: u64,
+    is_ptr: u8,
     _l0: DfsanLabel,
     _l1: DfsanLabel,
     _l2: DfsanLabel,
     _l3: DfsanLabel,
     l4: DfsanLabel,
+    _l5: DfsanLabel,
 ) {
     let lb: DfsanLabel = l4;
     if len_label::is_len_label(lb) || lb == 0 {
         return;
     }
 
-    log_cmp(cmpid, context, defs::COND_FALSE_ST, op, size, lb, 0, val, 0);
+    log_cmp(cmpid, context, defs::COND_FALSE_ST, op, size, lb, 0, val, 0, is_ptr);
 }
 
 #[inline]
@@ -241,7 +256,12 @@ fn log_cmp(
     lb2: u32,
     arg1: u64,
     arg2: u64,
+    is_ptr: u8,
 ) {
+    let ptr = match is_ptr {
+        1 => true,
+        _ => false,
+    };
     let cond = CondStmtBase {
         cmpid,
         context,
@@ -255,6 +275,7 @@ fn log_cmp(
         lb2,
         arg1,
         arg2,
+        is_ptr: ptr,
     };
     let mut lcl = LC.lock().expect("Could not lock LC.");
     if let Some(ref mut lc) = *lcl {
@@ -267,3 +288,58 @@ pub extern "C" fn __angora_track_fini_rs() {
     let mut lcl = LC.lock().expect("Could not lock LC.");
     *lcl = None;
 }
+
+#[no_mangle]
+pub extern "C" fn __angora_load_tt(_a: *const i8, _b: usize) {
+    panic!("Forbid calling __angora_load_tt directly");
+}
+
+#[no_mangle]
+pub extern "C" fn __dfsw___angora_load_tt(
+    addr: *const i8,
+    size: usize,
+    fname: *const i8,
+    line: u32,
+    col: u32,
+    _l0: DfsanLabel,
+    _l1: DfsanLabel,
+    _l2: DfsanLabel,
+    _l3: DfsanLabel,
+    _l4: DfsanLabel,
+) {
+    let arglen = if size == 0 {
+        unsafe {libc::strlen(addr) as usize}
+    } else {
+        size
+    };
+
+    let lb = unsafe { dfsan_read_label(addr, arglen) };
+
+    if lb == 0 {
+        return
+    }
+
+    let chr = unsafe {
+        assert!(!fname.is_null());
+        CStr::from_ptr(fname)
+    };
+    let fname_slice = chr.to_str().unwrap();
+
+    let tags = tag_set_find(lb as usize);
+
+    eprintln!("[load] lb: {}, fname: {}, line: {}, col: {}", lb, fname_slice, line, col);
+    for tag in tags {
+        eprintln!("- [load] begin: {}, end: {}", tag.begin, tag.end);
+    }
+}
+
+
+// #[no_mangle]
+// pub extern "C" fn __angora_test_fn() {
+//     panic!("Forbid calling __angora_test_fn directly");
+// }
+
+// #[no_mangle]
+// pub extern "C" fn __dfsw___angora_test_fn() {
+//     eprint!("__angora_test_fn");
+// }
