@@ -4,8 +4,10 @@ use std::{collections::HashSet, sync::Mutex};
 
 lazy_static! {
     static ref FFDS: Mutex<HashSet<u32>> = {
-        let mut set = HashSet::new();
-        set.insert(libc::STDIN_FILENO as u32);
+        let set = HashSet::new();
+        // set.insert(libc::STDIN_FILENO as u32);
+        // ncurese will read file to test during compilation,
+        // that will result in segmentation fault
         Mutex::new(set)
     };
 }
