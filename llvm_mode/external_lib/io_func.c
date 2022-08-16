@@ -22,7 +22,7 @@
 #include "./ffds.h"
 #include "./len_label.h"
 
-#define DEBUG_INFO
+// #define DEBUG_INFO
 
 static int granularity = 1; // byte level
 
