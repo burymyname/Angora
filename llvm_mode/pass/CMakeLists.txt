@@ -1,5 +1,5 @@
-
-find_package(LLVM REQUIRED CONFIG)
+# if there is too many llvm version in machine, it may search the nearest one and conflict
+find_package(LLVM REQUIRED PATHS /usr/lib/llvm-11 NO_DEFAULT_PATH)
 
 if (LLVM_FOUND)
     message(STATUS "LLVM_VERSION_MAJOR: ${LLVM_VERSION_MAJOR}")
